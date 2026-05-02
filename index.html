@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>老猫的交易助手 V1.8.8</title>
+    <style>
+        :root {
+            --primary-orange: #ff9800;
+            --dark-orange: #f57c00;
+            --profit-red: #d32f2f;
+            --risk-green: #2e7d32;
+            --bg-color: #fffaf0;
+            --text-main: #333;
+        }
+        body { font-family: -apple-system, "SF Pro Display", "Helvetica Neue", Arial, sans-serif; background: var(--bg-color); margin: 0; padding: 0; color: var(--text-main); }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary-orange), var(--dark-orange));
+            color: white; padding: 12px 20px; display: flex; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 20px;
+        }
+
+        .lion-avatar {
+            width: 36px; height: 36px; background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            margin-right: 12px; border: 2px solid white; flex-shrink: 0;
+        }
+
+        .header h1 { margin: 0; font-size: 18px; font-weight: 800; display: flex; align-items: center; letter-spacing: 1px; }
+        .version { font-size: 11px; margin-left: 10px; background: rgba(0,0,0,0.15); padding: 2px 8px; border-radius: 4px; font-weight: normal; }
+
+        .container {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 15px; max-width: 1200px; margin: 0 auto; padding: 0 15px 20px 15px;
+        }
+
+        .card { background: white; border-radius: 16px; padding: 18px; box-shadow: 0 4px 15px rgba(245,124,0,0.1); border: 1px solid #ffe0b2; position: relative; }
+        h2 { margin-top: 0; font-size: 16px; color: var(--dark-orange); border-bottom: 2px solid #fff3e0; padding-bottom: 10px; margin-bottom: 15px; display: flex; align-items: center; }
+        
+        .input-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+        .full-width { grid-column: span 2; }
+        
+        label { display: block; font-size: 12px; margin-bottom: 5px; color: #666; font-weight: bold; }
+        input { 
+            width: 100%; padding: 10px; border: 1.5px solid #eee; border-radius: 10px; 
+            box-sizing: border-box; font-size: 15px; transition: 0.3s; background: #fafafa;
+        }
+
+        input:focus { border: 1.5px solid var(--primary-orange); outline: none; background: #fffde7; box-shadow: 0 0 8px rgba(255,152,0,0.3); }
+        
+        .hands-input-wrapper { display: flex; align-items: center; gap: 12px; }
+        .small-input { width: 100px !important; flex: none !important; text-align: center; }
+        .max-hint { font-size: 13px; color: #777; white-space: nowrap; font-weight: bold; }
+        .max-num { color: var(--profit-red); font-size: 15px; margin: 0 2px; }
+
+        .default-setter { display: flex; gap: 8px; margin-top: 4px; align-items: center; }
+        .btn-set { padding: 3px 8px; font-size: 10px; background: #fff3e0; border: 1px solid var(--primary-orange); color: var(--dark-orange); border-radius: 4px; cursor: pointer; white-space: nowrap; }
+
+        .comparison-area { 
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            background: #fff3e0; padding: 10px; border-radius: 10px; text-align: center; margin-top: 12px;
+        }
+        .comp-box { display: flex; flex-direction: column; justify-content: center; }
+        .comp-label { font-size: 11px; color: #e65100; margin-bottom: 2px; font-weight: bold; }
+        .comp-value { font-size: 26px; font-weight: 900; }
+        .val-risk { color: var(--risk-green); }
+        .val-profit { color: var(--profit-red); }
+
+        .dynamic-info { 
+            font-size: 13px; color: #444; margin-top: 12px; 
+            background: white; padding: 8px; border-radius: 8px; border: 1px solid #ffe0b2;
+            text-align: center; line-height: 1.6;
+        }
+        .info-row { border-bottom: 1px dashed #eee; padding: 3px 0; }
+        .info-row:last-child { border-bottom: none; }
+        .dot-diff { font-weight: 800; font-size: 14px; }
+        .ratio-highlight { color: #e65100; font-weight: 900; font-size: 15px; }
+
+        .btn-reset { 
+            width: 100%; padding: 10px; background: #f0f0f0; color: #000; 
+            border: 1.5px solid transparent; border-radius: 8px; cursor: pointer; margin-top: 12px; 
+            font-size: 13px; font-weight: bold; transition: all 0.3s ease;
+        }
+        .btn-reset:hover { background: #e0e0e0; }
+
+        /* 回归 1.6.8 页脚样式[cite: 3] */
+        .page-footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #9e9e9e;
+            font-size: 13px;
+            line-height: 1.8;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .page-footer a { color: #007bff; text-decoration: none; font-weight: bold; }
+
+        @media (max-width: 480px) { 
+            .header h1 { font-size: 16px; } 
+            .container { grid-template-columns: 1fr; } 
+            .comp-value { font-size: 22px; }
+        }
+    </style>
+</head>
+<body onload="initDefaults()">
+
+<div class="header">
+    <div class="lion-avatar">
+        <!-- 还原 1.6.8 图标[cite: 3] -->
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 10l3 4.5 1-1.5M7 10l-3 4.5-1-1.5M12 12c.5 0 1 .5 1 1s-.5 1-1 1-1-.5-1-1 .5-1 1-1z"/>
+            <path d="M15 4c.5 0 1 .5 1 1s-.5 1-1 1-1-.5-1-1 .5-1 1-1zM9 4c.5 0 1 .5 1 1s-.5 1-1 1-1-.5-1-1 .5-1 1-1z"/>
+            <path d="M12 3c7.2 0 9 4.8 9 9s-1.8 9-9 9-9-4.8-9-9 1.8-9 9-9z"/>
+            <path d="M12 14c2.5 0 4.5 2 4.5 4.5S14.5 23 12 23s-4.5-2-4.5-4.5 2-4.5 4.5-4.5z"/>
+        </svg>
+    </div>
+    <h1>老猫的交易助手 <span class="version">V1.8.8 大翟门特供版</span></h1>
+</div>
+
+<div class="container">
+    <div class="card">
+        <h2>🛡️ 以损定量开仓</h2>
+        <div class="input-group">
+            <div class="full-width">
+                <label>单笔止损总额 (元)</label>
+                <input type="text" id="riskAmount" onfocus="handleRiskFocus(this)" onblur="handleRiskBlur(this)" oninput="formatInput(this); calcRisk(true);">
+                <div class="default-setter">
+                    <span style="font-size: 10px; color: #999;">设默认值:</span>
+                    <input type="text" id="customDefault" style="padding: 2px 8px; font-size: 10px; width: 50px; height: auto; border-radius: 4px; border: 1px solid #ddd;">
+                    <button class="btn-set" onclick="saveNewDefault()">确认</button>
+                </div>
+            </div>
+            <div><label>进场价</label><input type="number" id="entry" oninput="calcRisk(true)"></div>
+            <div><label>止损价</label><input type="number" id="stop" oninput="calcRisk(true)"></div>
+            
+            <div><label>交易单位 (吨/手)</label><input type="number" id="unit" onfocus="this.value=''" onblur="handleAutoMemory(this, 'unit')" oninput="calcRisk(true)"></div>
+            <div><label>最小变动价位</label><input type="number" id="tick" onfocus="this.value=''" onblur="handleAutoMemory(this, 'tick')" oninput="calcRisk(true)"></div>
+            
+            <div class="full-width"><label>目标点位 (止盈)</label><input type="number" id="target" placeholder="计算盈利空间用" oninput="calcRisk(false)"></div>
+            
+            <div class="full-width">
+                <label>实操开仓手数 (可修改)</label>
+                <div class="hands-input-wrapper">
+                    <input type="number" id="execHands" class="small-input" style="border-color: var(--primary-orange); font-weight: bold;" 
+                           onfocus="this.value=''" 
+                           onblur="if(this.value==='') { this.value=document.getElementById('suggestHands').innerText; calcRisk(false); }"
+                           oninput="calcRisk(false)">
+                    <span class="max-hint">系统建议上限:<span id="suggestHands" class="max-num">0</span>手</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="comparison-area">
+            <div class="comp-box" style="border-right: 1px solid #ffccbc;">
+                <div class="comp-label">实际风险</div>
+                <div id="infoRisk" class="comp-value val-risk">0</div>
+            </div>
+            <div class="comp-box">
+                <div class="comp-label">盈利金额</div>
+                <div id="resProfit" class="comp-value val-profit">0</div>
+            </div>
+        </div>
+
+        <div class="dynamic-info">
+            <div class="info-row">
+                止损点差: <span id="infoDiff" class="dot-diff val-risk">0.00</span> | 
+                盈利点差: <span id="infoTargetDiff" class="dot-diff val-profit">0.00</span>
+            </div>
+            <div class="info-row">
+                止损跳数: <span id="infoTickRisk" class="dot-diff val-risk">0</span> | 
+                盈利跳数: <span id="infoTickProfit" class="dot-diff val-profit">0</span>
+            </div>
+            <div class="info-row">
+                预期盈亏比: <span id="infoRatio" class="ratio-highlight">0</span>
+            </div>
+        </div>
+        <button class="btn-reset" onclick="resetR()">清空数据</button>
+    </div>
+
+    <!-- 均价与反推模块保持逻辑 -->
+    <div class="card">
+        <h2>📈 加仓均价计算</h2>
+        <div class="input-group">
+            <div><label>初始价</label><input type="number" id="p1" oninput="calcAvg()"></div>
+            <div><label>初始手数</label><input type="number" id="n1" oninput="calcAvg()"></div>
+            <div><label>加仓价</label><input type="number" id="p2" oninput="calcAvg()"></div>
+            <div><label>加仓手数</label><input type="number" id="n2" oninput="calcAvg()"></div>
+        </div>
+        <div class="result-area" style="background: #fff3e0; padding: 12px; border-radius: 12px; text-align: center; margin-top: 12px;">
+            <div id="resAvg" style="font-size: 30px; font-weight: 900; color: var(--dark-orange);">0</div>
+        </div>
+        <button class="btn-reset" onclick="resetA()">清空数据</button>
+    </div>
+
+    <div class="card">
+        <h2>🔄 目标均价反推</h2>
+        <div class="input-group">
+            <div><label>初始价</label><input type="number" id="p3" oninput="calcBack()"></div>
+            <div><label>初始手数</label><input type="number" id="n3" oninput="calcBack()"></div>
+            <div><label>目标均价</label><input type="number" id="pT" oninput="calcBack()"></div>
+            <div><label>加仓价</label><input type="number" id="pN" oninput="calcBack()"></div>
+        </div>
+        <div class="result-area" style="background: #fff3e0; padding: 12px; border-radius: 12px; text-align: center; margin-top: 12px;">
+            <div id="resBack" style="font-size: 30px; font-weight: 900; color: var(--dark-orange);">0</div>
+        </div>
+        <button class="btn-reset" onclick="resetB()">清空数据</button>
+    </div>
+</div>
+
+<!-- 还原 1.6.8 的底部文字[cite: 3] -->
+<div class="page-footer">
+    此工具是根据老板的交易理念编写的，供大翟门的同学们免费使用。<br>
+    若有功能上的建议，请给我发邮件：<a href="mailto:vlonsa@qq.com">vlonsa@qq.com</a>
+</div>
+
+<script>
+    // 脚本逻辑保持稳定，包含新增加的 onfocus 点击清空逻辑
+    function formatNumber(num) {
+        if (!num && num !== 0) return "";
+        let parts = num.toString().split(".");
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        return parts.join(".");
+    }
+
+    function formatInput(input) {
+        let val = input.value.replace(/,/g, ""); 
+        if (!isNaN(val) && val !== "") { input.value = formatNumber(val); }
+    }
+
+    function getVal(id) {
+        let val = document.getElementById(id).value.replace(/,/g, "");
+        return parseFloat(val) || 0;
+    }
+
+    function getDefaultRisk() { return localStorage.getItem('catDefaultRisk') || "1,000"; }
+    function getMemory(key, def) { return localStorage.getItem('catMem_' + key) || def; }
+
+    function initDefaults() {
+        const defRisk = getDefaultRisk();
+        document.getElementById('riskAmount').value = defRisk;
+        document.getElementById('customDefault').value = defRisk.replace(/,/g, "");
+        document.getElementById('unit').value = getMemory('unit', '10');
+        document.getElementById('tick').value = getMemory('tick', '1');
+        calcRisk(true);
+    }
+
+    function handleAutoMemory(input, key) {
+        if (input.value === '') {
+            input.value = getMemory(key, key === 'unit' ? '10' : '1');
+        } else {
+            localStorage.setItem('catMem_' + key, input.value);
+        }
+        calcRisk(true);
+    }
+
+    function saveNewDefault() {
+        let val = document.getElementById('customDefault').value.replace(/,/g, "");
+        if (val && !isNaN(val)) {
+            const formatted = formatNumber(val);
+            localStorage.setItem('catDefaultRisk', formatted);
+            document.getElementById('riskAmount').value = formatted;
+            alert("已保存新默认止损金额：" + formatted);
+            calcRisk(true);
+        }
+    }
+
+    function handleRiskFocus(input) { input.value = ''; }
+    function handleRiskBlur(input) { if (input.value === '') { input.value = getDefaultRisk(); calcRisk(true); } }
+
+    function calcRisk(isAuto) {
+        const riskGoal = getVal('riskAmount');
+        const entry = parseFloat(document.getElementById('entry').value) || 0;
+        const stop = parseFloat(document.getElementById('stop').value) || 0;
+        const target = parseFloat(document.getElementById('target').value) || 0;
+        const unit = parseFloat(document.getElementById('unit').value) || 0;
+        const tick = parseFloat(document.getElementById('tick').value) || 1;
+        
+        const stopDiff = Math.abs(entry - stop);
+        const perHandRisk = stopDiff * unit;
+        const suggested = (riskGoal > 0 && perHandRisk > 0) ? Math.floor(riskGoal / perHandRisk) : 0;
+        document.getElementById('suggestHands').innerText = suggested;
+
+        if(isAuto) { document.getElementById('execHands').value = suggested; }
+
+        const actualHands = parseFloat(document.getElementById('execHands').value) || 0;
+        const profitDiff = target > 0 ? Math.abs(target - entry) : 0;
+        
+        document.getElementById('infoRisk').innerText = formatNumber(Math.round(perHandRisk * actualHands));
+        document.getElementById('resProfit').innerText = formatNumber(Math.round(profitDiff * unit * actualHands));
+        document.getElementById('infoDiff').innerText = stopDiff.toFixed(2);
+        document.getElementById('infoTargetDiff').innerText = profitDiff.toFixed(2);
+        
+        document.getElementById('infoTickRisk').innerText = tick > 0 ? Math.round(stopDiff / tick) : 0;
+        document.getElementById('infoTickProfit').innerText = (tick > 0 && profitDiff > 0) ? Math.round(profitDiff / tick) : 0;
+
+        if(stopDiff > 0 && profitDiff > 0) {
+            const ratioX = Math.floor(profitDiff / stopDiff); 
+            document.getElementById('infoRatio').innerText = "1 : " + ratioX;
+        } else {
+            document.getElementById('infoRatio').innerText = "0";
+        }
+    }
+
+    function calcAvg() {
+        const p1 = parseFloat(document.getElementById('p1').value) || 0;
+        const n1 = parseFloat(document.getElementById('n1').value) || 0;
+        const p2 = parseFloat(document.getElementById('p2').value) || 0;
+        const n2 = parseFloat(document.getElementById('n2').value) || 0;
+        document.getElementById('resAvg').innerText = (n1 + n2) > 0 ? ((p1*n1 + p2*n2)/(n1+n2)).toFixed(2) : 0;
+    }
+
+    function calcBack() {
+        const p1 = parseFloat(document.getElementById('p3').value) || 0;
+        const n1 = parseFloat(document.getElementById('n3').value) || 0;
+        const pt = parseFloat(document.getElementById('pT').value) || 0;
+        const pn = parseFloat(document.getElementById('pN').value) || 0;
+        const display = document.getElementById('resBack');
+        if(p1 && n1 && pt && pn && Math.abs(pt - pn) > 0.0001) {
+            const res = ((p1 - pt) / (pt - pn)) * n1;
+            display.innerText = res > 0 ? res.toFixed(2) : "异常";
+        }
+    }
+
+    function resetR() { 
+        ['entry','stop','target','execHands'].forEach(id=>document.getElementById(id).value=''); 
+        document.getElementById('riskAmount').value = getDefaultRisk();
+        calcRisk(true); 
+    }
+    function resetA() { ['p1','n1','p2','n2'].forEach(id=>document.getElementById(id).value=''); calcAvg(); }
+    function resetB() { ['p3','n3','pT','pN'].forEach(id=>document.getElementById(id).value=''); calcBack(); }
+</script>
+</body>
+</html>
