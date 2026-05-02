@@ -318,7 +318,7 @@
         const display = document.getElementById('resBack');
         if(p1 && n1 && pt && pn && Math.abs(pt - pn) > 0.0001) {
             const res = ((p1 - pt) / (pt - pn)) * n1;
-            display.innerText = res > 0 ? res.toFixed(2) : "异常";
+            display.innerText = res > 0 ? res.toFixed(2) : "上面是不是填错了？";
         }
     }
 
