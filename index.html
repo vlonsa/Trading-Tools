@@ -146,18 +146,18 @@
                            onfocus="this.value=''" 
                            onblur="if(this.value==='') { this.value=document.getElementById('suggestHands').innerText; calcRisk(false); }"
                            oninput="calcRisk(false)">
-                    <span class="max-hint">系统建议上限:<span id="suggestHands" class="max-num">0</span>手</span>
+                    <span class="max-hint">以损定量上限:<span id="suggestHands" class="max-num">0</span>手</span>
                 </div>
             </div>
         </div>
 
         <div class="comparison-area">
             <div class="comp-box" style="border-right: 1px solid #ffccbc;">
-                <div class="comp-label">实际风险</div>
+                <div class="comp-label">预期止损</div>
                 <div id="infoRisk" class="comp-value val-risk">0</div>
             </div>
             <div class="comp-box">
-                <div class="comp-label">盈利金额</div>
+                <div class="comp-label">预期盈利</div>
                 <div id="resProfit" class="comp-value val-profit">0</div>
             </div>
         </div>
