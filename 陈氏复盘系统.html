@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>陈氏复盘系统 V12.18</title>
+    <title>陈氏复盘系统 V12.19</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
@@ -12,13 +12,11 @@
         .container { max-width: 1900px; margin: 0 auto; display: flex; flex-direction: column; height: calc(100vh - 10px); background: #fff; border-radius: 4px; padding: 10px; box-sizing: border-box; overflow: hidden; }
         
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; flex-wrap: nowrap; gap: 4px; }
-        /* 标题按钮化：点击 📊 即可折叠 */
         .header h2 { font-size: 17px; margin: 0; color: #262626; display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
         .fold-trigger { cursor: pointer; padding: 2px 4px; border-radius: 4px; transition: background 0.2s; }
         .fold-trigger:hover { background: #e6f7ff; }
 
         .toolbar { display: flex; gap: 4px; align-items: center; flex-shrink: 1; }
-        /* 极致缩小聚焦框 */
         #zoomDays { width: 30px; height: 22px; text-align: center; border: 1px solid #d9d9d9; border-radius: 2px; font-size: 12px; }
         
         .btn-main { padding: 4px 8px; cursor: pointer; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; white-space: nowrap; }
@@ -27,9 +25,10 @@
 
         .stats-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 5px; margin-bottom: 8px; }
         .stats-grid.hidden { display: none; }
-        .stat-card { background: #fafafa; border: 1px solid #f0f0f0; padding: 6px 2px; border-radius: 4px; text-align: center; }
+        .stat-card { background: #fafafa; border: 1px solid #f0f0f0; padding: 8px 2px; border-radius: 4px; text-align: center; }
         .stat-card label { display: block; font-size: 11px; color: #595959; margin-bottom: 2px; font-weight: bold; }
-        .stat-card b { font-size: 16px; font-family: "Arial Black"; color: var(--primary-blue); }
+        /* 看板数字放大 */
+        .stat-card b { font-size: 24px; font-family: "Arial Black"; color: var(--primary-blue); }
 
         #chart-main { width: 100%; height: 380px; margin-bottom: 8px; flex-shrink: 0; }
         
@@ -46,12 +45,14 @@
         
         @media (max-width: 768px) {
             .stats-grid { grid-template-columns: repeat(3, 1fr); }
+            /* 手机端看板数字也适度放大 */
+            .stat-card b { font-size: 20px; }
             #chart-main { height: 260px; }
             .table-scroll::after { content: ""; display: block; height: 120px; width: 100%; }
             @media (orientation: landscape) {
                 #chart-main { height: 160px; }
                 .header h2 { font-size: 14px; }
-                .stat-card b { font-size: 14px; }
+                .stat-card b { font-size: 16px; }
             }
         }
 
@@ -67,9 +68,7 @@
 <body>
 <div class="container" id="mainContainer">
     <div class="header">
-        <h2>
-            <span class="fold-trigger" onclick="toggleStats()">📊</span> 复盘 V12.18
-        </h2>
+        <h2><span class="fold-trigger" onclick="toggleStats()">📊</span> 复盘 V12.19</h2>
         <div class="toolbar">
             <span style="font-size:12px">聚焦</span>
             <input type="number" id="zoomDays" value="60">
@@ -144,7 +143,11 @@
     function renderChart() {
         const chronData = [...originalData].sort((a,b) => a.originalIndex - b.originalIndex);
         myChart.setOption({
-            tooltip: { trigger: 'axis' },
+            tooltip: { 
+                trigger: 'axis',
+                /* 十字准星回归 */
+                axisPointer: { type: 'cross', label: { backgroundColor: '#6a7985' } } 
+            },
             legend: { 
                 data: ['标化净值', '日盈亏', '手续费', '出入金'], 
                 selected: {'手续费': false, '出入金': false},
