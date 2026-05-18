@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>陈氏复盘系统 V12.13</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root { --primary-blue: #1890ff; --up-red: #f5222d; --down-green: #52c41a; --fee-orange: #faad14; --io-purple: #722ed1; }
+        body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background-color: #f0f2f5; margin: 0; padding: 5px; overflow: hidden; }
+        .container { max-width: 1900px; margin: 0 auto; display: flex; flex-direction: column; height: calc(100vh - 10px); background: #fff; border-radius: 4px; padding: 10px; box-sizing: border-box; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; flex-wrap: wrap; gap: 10px; }
+        .header h2 { font-size: 22px; margin: 0; color: #262626; }
+        .toolbar { display: flex; gap: 12px; align-items: center; }
+        .btn-main { padding: 8px 18px; cursor: pointer; border: none; border-radius: 4px; font-size: 15px; font-weight: bold; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+        .btn-import { background: var(--primary-blue); color: white; box-shadow: 0 2px 4px rgba(24,144,255,0.3); }
+        .btn-reset { background: #52c41a; color: white; }
+        .stats-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 8px; margin-bottom: 10px; }
+        .stat-card { background: #fafafa; border: 1px solid #f0f0f0; padding: 12px 2px; border-radius: 4px; text-align: center; }
+        .stat-card label { display: block; font-size: 13px; color: #595959; margin-bottom: 6px; font-weight: bold; }
+        .stat-card b { font-size: 22px; font-family: "Arial Black"; color: var(--primary-blue); letter-spacing: -0.5px; }
+        #chart-main { width: 100%; height: 360px; margin-bottom: 8px; }
+        .detail-section { flex: 1; border: 1px solid #eee; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+        .detail-header { display: flex; justify-content: space-between; align-items: center; background: #fafafa; padding: 8px 12px; border-bottom: 1px solid #eee; }
+        .scroll-btns { display: flex; gap: 6px; }
+        .scroll-btns button { padding: 8px 15px; font-size: 14px; cursor: pointer; background: #fff; border: 1px solid #d9d9d9; border-radius: 4px; font-weight: bold; }
+        @media (min-width: 769px) {
+            .btn-up-text::after { content: " 顶部 🔼"; }
+            .btn-down-text::after { content: " 底部 🔽"; }
+            .btn-full-text::after { content: " 全屏表格"; }
+        }
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
+            .stat-card b { font-size: 18px; }
+            #chart-main { height: 280px; }
+            .scroll-btns button { padding: 6px 10px; font-size: 16px; }
+            .btn-up-text::after { content: "🔝"; }
+            .btn-down-text::after { content: "🔽"; }
+            .btn-full-text::after { content: "🔳"; }
+        }
+        .table-scroll { flex: 1; overflow: auto; }
+        .table-scroll::after { content: ""; display: block; height: 80px; width: 100%; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 1850px; }
+        th, td { padding: 10px 5px; font-size: 13px; border-bottom: 1px solid #f0f0f0; text-align: center; }
+        th { background: #fafafa; position: sticky; top: 0; z-index: 20; cursor: pointer; color: #555; }
+        .up { color: var(--up-red); font-weight: bold; } 
+        .down { color: var(--down-green); font-weight: bold; }
+        .selected-row { background-color: #e6f7ff !important; outline: 1px solid var(--primary-blue); }
+        .fullscreen-mode #chart-main, .fullscreen-mode .stats-grid { display: none !important; }
+    </style>
+</head>
+<body>
+<div class="container" id="mainContainer">
+    <div class="header">
+        <h2>📊 陈氏复盘系统 V12.13</h2>
+        <div class="toolbar">
+            <div style="font-size:14px; font-weight:bold; display:flex; align-items:center; gap:5px;">
+                <span>聚焦:</span>
+                <input type="number" id="zoomDays" style="width:55px; height:28px; text-align:center; border:1px solid #d9d9d9;" value="60">
+            </div>
+            <button class="btn-main btn-reset" onclick="resetZoom()">🧩 全景视图</button>
+            <button class="btn-main btn-import" onclick="document.getElementById('fileInput').click()">📥 导入数据</button>
+            <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" style="display:none">
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card"><label>收盘权益</label><b id="st-balance">0</b></div>
+        <div class="stat-card"><label style="color:var(--up-red)">总盈利(+)</label><b id="st-plus" style="color:var(--up-red)">0</b></div>
+        <div class="stat-card"><label style="color:var(--down-green)">总亏损(-)</label><b id="st-minus" style="color:var(--down-green)">0</b></div>
+        <div class="stat-card"><label style="color:var(--fee-orange)">区间手续费</label><b id="st-fee-total" style="color:var(--fee-orange)">0</b></div>
+        <div class="stat-card"><label>最终净盈亏</label><b id="st-total-pnl">0</b></div>
+        <div class="stat-card"><label>标化净值</label><b id="st-eq">0.000</b></div>
+        <div class="stat-card"><label>区间出入金</label><b id="st-io">0</b></div>
+        <div class="stat-card"><label>区间胜率</label><b id="st-winrate">0%</b></div>
+        <div class="stat-card"><label>盈亏比</label><b id="st-ratio">0.00</b></div>
+    </div>
+
+    <div id="chart-main"></div>
+
+    <div class="detail-section" id="detailPanel">
+        <div class="detail-header">
+            <span style="font-size:13px; color:#333; font-weight:bold;">📋 复盘明细</span>
+            <div class="scroll-btns">
+                <button onclick="scrollTable('top')" class="btn-up-text"></button>
+                <button onclick="scrollTable('bottom')" class="btn-down-text"></button>
+                <button onclick="toggleFullScreen()" class="btn-full-text"></button>
+            </div>
+        </div>
+        <div class="table-scroll" id="scrollContainer">
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable('originalIndex')">日期 ↕</th>
+                        <th onclick="sortTable('日盈亏')">日盈亏 ↕</th>
+                        <th onclick="sortTable('手续费')">手续费 ↕</th>
+                        <th onclick="sortTable('收盘权益')">收盘权益 ↕</th>
+                        <th onclick="sortTable('日净盈亏')">日净盈亏 ↕</th>
+                        <th style="width:120px">农历+节气</th>
+                        <th>流月</th><th>流日</th>
+                        <th onclick="sortTable('盈亏比例')">盈亏比例 ↕</th>
+                        <th onclick="sortTable('持仓浮盈')">持仓盈亏 ↕</th>
+                        <th onclick="sortTable('持仓保证金')">保证金 ↕</th>
+                        <th onclick="sortTable('持仓比例')">仓位 ↕</th>
+                        <th onclick="sortTable('账户净值')">账户净值 ↕</th>
+                        <th onclick="sortTable('标准化净值')">标化净值 ↕</th>
+                        <th onclick="sortTable('总净盈亏')">总净盈亏 ↕</th>
+                        <th onclick="sortTable('出入金')">出入金 ↕</th>
+                        <th onclick="sortTable('总出入金')">总出入金 ↕</th>
+                        <th style="width:250px">备注</th>
+                    </tr>
+                </thead>
+                <tbody id="h-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    let originalData = [];
+    const myChart = echarts.init(document.getElementById('chart-main'));
+
+    function n(v) { if (!v && v !== 0) return 0; let s = String(v).replace(/[,\s%]/g, ''); if (s.includes('(')) s = '-' + s.replace(/[()]/g, ''); return isNaN(parseFloat(s)) ? 0 : parseFloat(s); }
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            originalData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]).filter(r => r['日期']).map((item, index) => ({ ...item, originalIndex: index }));
+            renderAll();
+            scrollTable('bottom');
+        };
+        reader.readAsArrayBuffer(e.target.files[0]);
+    });
+
+    function renderAll() {
+        renderTable();
+        renderChart();
+        updateStats(0, originalData.length - 1);
+    }
+
+    function renderChart() {
+        const chronData = [...originalData].sort((a,b) => a.originalIndex - b.originalIndex);
+        myChart.setOption({
+            tooltip: { trigger: 'axis' },
+            legend: { data: ['标化净值', '日盈亏', '日手续费', '出入金'], selected: {'日手续费': false, '出入金': false}, top: 0 },
+            grid: { left: '3%', right: '3%', bottom: '15%', top: '45px', containLabel: true },
+            xAxis: { type: 'category', data: chronData.map(r => r['日期']) },
+            yAxis: [{ type: 'value', scale: true }, { type: 'value', splitLine: {show: false} }],
+            dataZoom: [{ type: 'inside', start: 0, end: 100 }, { type: 'slider', start: 0, end: 100 }],
+            series: [
+                { name: '标化净值', type: 'line', smooth: true, data: chronData.map(r => n(r['标准化净值']).toFixed(3)), lineStyle: { color: '#4169E1', width: 3 }, symbol: 'none' },
+                { name: '日盈亏', type: 'bar', yAxisIndex: 1, data: chronData.map(r => n(r['日净盈亏'])), itemStyle: { color: p => p.value >= 0 ? '#f5222d' : '#52c41a' } },
+                { name: '日手续费', type: 'bar', yAxisIndex: 1, data: chronData.map(r => n(r['手续费'])), itemStyle: { color: '#faad14', opacity: 0.6 } },
+                { name: '出入金', type: 'bar', yAxisIndex: 1, data: chronData.map(r => n(r['出入金'])), itemStyle: { color: '#722ed1', opacity: 0.5 } }
+            ]
+        }, true);
+        myChart.on('datazoom', () => { const axis = myChart.getModel().getComponent('xAxis', 0).axis; updateStats(axis.scale.getExtent()[0], axis.scale.getExtent()[1]); });
+    }
+
+    function updateStats(start, end) {
+        if (!originalData.length) return;
+        const view = [...originalData].sort((a,b)=>a.originalIndex-b.originalIndex).slice(start, end + 1);
+        const last = view[view.length - 1];
+        const dayPnls = view.map(r => n(r['日盈亏']));
+        document.getElementById('st-balance').innerText = n(last['收盘权益']).toLocaleString();
+        document.getElementById('st-plus').innerText = dayPnls.filter(v=>v>0).reduce((s,v)=>s+v,0).toLocaleString();
+        document.getElementById('st-minus').innerText = dayPnls.filter(v=>v<0).reduce((s,v)=>s+v,0).toLocaleString();
+        document.getElementById('st-fee-total').innerText = view.reduce((s,r)=>s+n(r['手续费']),0).toLocaleString();
+        document.getElementById('st-eq').innerText = n(last['标准化净值']).toFixed(3);
+        const valid = view.map(r => n(r['日净盈亏'])).filter(v => v !== 0);
+        document.getElementById('st-winrate').innerText = valid.length ? (valid.filter(v=>v>0).length / valid.length * 100).toFixed(1) + '%' : '0%';
+        document.getElementById('st-total-pnl').innerText = view.reduce((s,r)=>s+n(r['日净盈亏']),0).toLocaleString();
+        document.getElementById('st-io').innerText = view.reduce((s,r)=>s+n(r['出入金']),0).toLocaleString();
+    }
+
+    function renderTable() {
+        document.getElementById('h-body').innerHTML = originalData.map(r => `
+            <tr id="row-${r.originalIndex}" onclick="syncToChart(${r.originalIndex})">
+                <td>${r['日期']}</td><td class="${n(r['日盈亏'])>=0?'up':'down'}">${n(r['日盈亏']).toLocaleString()}</td>
+                <td style="color:var(--fee-orange)">${n(r['手续费']).toLocaleString()}</td><td>${n(r['收盘权益']).toLocaleString()}</td>
+                <td class="${n(r['日净盈亏'])>=0?'up':'down'}">${n(r['日净盈亏']).toLocaleString()}</td><td>${r['农历+节气']||'-'}</td><td>${r['流月']||'-'}</td><td>${r['流日']||'-'}</td>
+                <td class="${n(r['盈亏比例'])>=0?'up':'down'}">${(n(r['盈亏比例'])*100).toFixed(2)}%</td><td>${n(r['持仓浮盈']).toLocaleString()}</td>
+                <td>${n(r['持仓保证金']).toLocaleString()}</td><td>${(n(r['持仓比例'])*100).toFixed(1)}%</td><td>${n(r['账户净值']).toFixed(3)}</td><td>${n(r['标准化净值']).toFixed(3)}</td>
+                <td class="${n(r['总净盈亏'])>=0?'up':'down'}">${n(r['总净盈亏']).toLocaleString()}</td><td>${n(r['出入金']).toLocaleString()}</td><td>${n(r['总出入金']).toLocaleString()}</td>
+                <td style="text-align:left">${r['备注']||'-'}</td>
+            </tr>`).join('');
+    }
+
+    function syncToChart(originalIdx) {
+        document.querySelectorAll('tr').forEach(r => r.classList.remove('selected-row'));
+        document.getElementById(`row-${originalIdx}`)?.classList.add('selected-row');
+        const chronData = [...originalData].sort((a,b)=>a.originalIndex-b.originalIndex);
+        const dataIdx = chronData.findIndex(r => r.originalIndex === originalIdx);
+        if(dataIdx !== -1) {
+            const zoomDays = parseInt(document.getElementById('zoomDays').value) || 60;
+            let start = Math.max(0, dataIdx - Math.floor(zoomDays/2));
+            myChart.dispatchAction({ type: 'dataZoom', start: (start/chronData.length)*100, end: ((start+zoomDays)/chronData.length)*100 });
+            myChart.dispatchAction({ type: 'showTip', seriesIndex: 0, dataIndex: dataIdx });
+        }
+    }
+
+    function scrollTable(pos) { const container = document.getElementById('scrollContainer'); container.scrollTop = pos === 'top' ? 0 : container.scrollHeight; }
+    function resetZoom() { myChart.dispatchAction({ type: 'dataZoom', start: 0, end: 100 }); }
+    function toggleFullScreen() { document.getElementById('mainContainer').classList.toggle('fullscreen-mode'); setTimeout(()=>myChart.resize(), 100); }
+</script>
+</body>
+</html>
