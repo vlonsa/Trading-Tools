@@ -3,72 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>陈氏复盘系统 V12.16</title>
+    <title>陈氏复盘系统 V12.18</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root { --primary-blue: #1890ff; --up-red: #f5222d; --down-green: #52c41a; --fee-orange: #faad14; --io-purple: #722ed1; }
-        body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background-color: #f0f2f5; margin: 0; padding: 5px; overflow-x: hidden; }
-        .container { max-width: 1900px; margin: 0 auto; display: flex; flex-direction: column; height: calc(100vh - 10px); background: #fff; border-radius: 4px; padding: 10px; box-sizing: border-box; }
+        body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background-color: #f0f2f5; margin: 0; padding: 5px; overflow: hidden; height: 100vh; }
         
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; flex-wrap: wrap; gap: 10px; }
-        .header h2 { font-size: 22px; margin: 0; color: #262626; }
-        .toolbar { display: flex; gap: 12px; align-items: center; }
+        /* 强制全端固定高度，取消全局滚动 */
+        .container { max-width: 1900px; margin: 0 auto; display: flex; flex-direction: column; height: calc(100vh - 10px); background: #fff; border-radius: 4px; padding: 10px; box-sizing: border-box; overflow: hidden; }
         
-        .btn-main { padding: 8px 18px; cursor: pointer; border: none; border-radius: 4px; font-size: 15px; font-weight: bold; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
-        .btn-import { background: var(--primary-blue); color: white; box-shadow: 0 2px 4px rgba(24,144,255,0.3); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; flex-wrap: nowrap; gap: 5px; }
+        .header h2 { font-size: 20px; margin: 0; color: #262626; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        
+        /* 折叠按钮：现在嵌入标题栏 */
+        .mobile-fold-btn { display: none; padding: 2px 8px; background: #f0f5ff; border: 1px solid #adc6ff; color: #1d39c4; border-radius: 4px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+
+        .toolbar { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+        .btn-main { padding: 6px 12px; cursor: pointer; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; }
+        .btn-import { background: var(--primary-blue); color: white; }
         .btn-reset { background: #52c41a; color: white; }
 
-        .stats-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 8px; margin-bottom: 10px; }
-        .stat-card { background: #fafafa; border: 1px solid #f0f0f0; padding: 12px 2px; border-radius: 4px; text-align: center; }
-        .stat-card label { display: block; font-size: 13px; color: #595959; margin-bottom: 6px; font-weight: bold; }
-        .stat-card b { font-size: 22px; font-family: "Arial Black"; color: var(--primary-blue); letter-spacing: -0.5px; }
+        /* 看板默认显示 */
+        .stats-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; margin-bottom: 8px; transition: all 0.3s; }
+        .stat-card { background: #fafafa; border: 1px solid #f0f0f0; padding: 8px 2px; border-radius: 4px; text-align: center; }
+        .stat-card label { display: block; font-size: 12px; color: #595959; margin-bottom: 4px; font-weight: bold; }
+        .stat-card b { font-size: 18px; font-family: "Arial Black"; color: var(--primary-blue); }
 
-        .mobile-fold-btn { display: none; width: 100%; padding: 8px; background: #f0f5ff; border: 1px solid #adc6ff; color: #1d39c4; border-radius: 4px; font-weight: bold; margin-bottom: 5px; cursor: pointer; text-align: center; }
-
-        #chart-main { width: 100%; height: 360px; margin-bottom: 8px; }
-        .detail-section { flex: 1; border: 1px solid #eee; overflow: hidden; display: flex; flex-direction: column; position: relative; }
-        .detail-header { display: flex; justify-content: space-between; align-items: center; background: #fafafa; padding: 8px 12px; border-bottom: 1px solid #eee; }
+        #chart-main { width: 100%; height: 380px; margin-bottom: 8px; flex-shrink: 0; }
         
+        /* 局部滚动区域 */
+        .detail-section { flex: 1; border: 1px solid #eee; overflow: hidden; display: flex; flex-direction: column; min-height: 150px; }
+        .detail-header { display: flex; justify-content: space-between; align-items: center; background: #fafafa; padding: 6px 12px; border-bottom: 1px solid #eee; }
         .scroll-btns { display: flex; gap: 6px; }
-        .scroll-btns button { padding: 8px 15px; font-size: 14px; cursor: pointer; background: #fff; border: 1px solid #d9d9d9; border-radius: 4px; font-weight: bold; }
+        .scroll-btns button { padding: 5px 12px; font-size: 13px; cursor: pointer; background: #fff; border: 1px solid #d9d9d9; border-radius: 4px; font-weight: bold; }
 
-        .table-scroll { flex: 1; overflow: auto; }
+        .table-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; }
         
-        /* 关键修改：通过伪元素增加留白，默认 PC 端不显示 */
-        .table-scroll::after { content: ""; display: block; width: 100%; height: 0; pointer-events: none; }
-
         @media (min-width: 769px) {
             .btn-up-text::after { content: " 顶部 🔼"; }
             .btn-down-text::after { content: " 底部 🔽"; }
-            .btn-full-text::after { content: " 全屏表格"; }
+            .btn-full-text::after { content: " 全屏"; }
         }
 
         @media (max-width: 768px) {
-            .container { height: auto; min-height: 100vh; overflow-y: auto; }
-            .header h2 { font-size: 18px; }
-            .mobile-fold-btn { display: block; }
-            .stats-grid { display: none; grid-template-columns: repeat(3, 1fr); }
-            .stats-grid.active { display: grid; }
-            .stat-card b { font-size: 18px; }
+            .header h2 { font-size: 15px; }
+            .mobile-fold-btn { display: inline-block; } /* 手机端标题栏内显示 */
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
+            .stats-grid.hidden { display: none; } /* 折叠逻辑 */
+            
             #chart-main { height: 280px; }
-            .scroll-btns button { padding: 6px 10px; font-size: 16px; }
-            .btn-up-text::after { content: "🔝"; }
-            .btn-down-text::after { content: "🔽"; }
-            .btn-full-text::after { content: "🔳"; }
-            
-            /* 手机端专用留白：120px */
-            .table-scroll::after { height: 120px; }
-            
+            .table-scroll::after { content: ""; display: block; height: 120px; width: 100%; } /* 手机端留白 */
+
+            /* 横屏下的极致空间压缩 */
             @media (orientation: landscape) {
-                #chart-main { height: 220px; }
-                .container { padding: 2px; }
+                #chart-main { height: 180px; }
+                .stats-grid { grid-template-columns: repeat(5, 1fr); }
+                .stat-card { padding: 4px 2px; }
+                .stat-card b { font-size: 15px; }
+                .header { margin-bottom: 5px; }
             }
         }
 
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 1850px; }
-        th, td { padding: 10px 5px; font-size: 13px; border-bottom: 1px solid #f0f0f0; text-align: center; }
-        th { background: #fafafa; position: sticky; top: 0; z-index: 20; cursor: pointer; color: #555; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 1800px; }
+        th, td { padding: 8px 4px; font-size: 13px; border-bottom: 1px solid #f0f0f0; text-align: center; }
+        th { background: #fafafa; position: sticky; top: 0; z-index: 20; color: #555; }
         .up { color: var(--up-red); font-weight: bold; } 
         .down { color: var(--down-green); font-weight: bold; }
         .selected-row { background-color: #e6f7ff !important; outline: 1px solid var(--primary-blue); }
@@ -78,29 +77,27 @@
 <body>
 <div class="container" id="mainContainer">
     <div class="header">
-        <h2>📊 陈氏复盘系统 V12.16</h2>
+        <h2>
+            📊 复盘 V12.18
+            <div class="mobile-fold-btn" onclick="toggleStats()">看板展开/折叠</div>
+        </h2>
         <div class="toolbar">
-            <div style="font-size:14px; font-weight:bold; display:flex; align-items:center; gap:5px;">
-                <span>聚焦:</span>
-                <input type="number" id="zoomDays" style="width:55px; height:28px; text-align:center; border:1px solid #d9d9d9;" value="60">
-            </div>
-            <button class="btn-main btn-reset" onclick="resetZoom()">🧩 全景视图</button>
-            <button class="btn-main btn-import" onclick="document.getElementById('fileInput').click()">📥 导入数据</button>
+            <input type="number" id="zoomDays" style="width:45px; height:26px; text-align:center;" value="60">
+            <button class="btn-main btn-reset" onclick="resetZoom()">🧩 全景</button>
+            <button class="btn-main btn-import" onclick="document.getElementById('fileInput').click()">📥 导入</button>
             <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" style="display:none">
         </div>
     </div>
 
-    <div class="mobile-fold-btn" onclick="toggleStats()">📈 数据看板 [展开/折叠]</div>
-
     <div class="stats-grid" id="statsGrid">
         <div class="stat-card"><label>收盘权益</label><b id="st-balance">0</b></div>
-        <div class="stat-card"><label style="color:var(--up-red)">总盈利(+)</label><b id="st-plus" style="color:var(--up-red)">0</b></div>
-        <div class="stat-card"><label style="color:var(--down-green)">总亏损(-)</label><b id="st-minus" style="color:var(--down-green)">0</b></div>
-        <div class="stat-card"><label style="color:var(--fee-orange)">区间手续费</label><b id="st-fee-total" style="color:var(--fee-orange)">0</b></div>
-        <div class="stat-card"><label>最终净盈亏</label><b id="st-total-pnl">0</b></div>
+        <div class="stat-card"><label style="color:var(--up-red)">总盈利</label><b id="st-plus" style="color:var(--up-red)">0</b></div>
+        <div class="stat-card"><label style="color:var(--down-green)">总亏损</label><b id="st-minus" style="color:var(--down-green)">0</b></div>
+        <div class="stat-card"><label style="color:var(--fee-orange)">手续费</label><b id="st-fee-total" style="color:var(--fee-orange)">0</b></div>
+        <div class="stat-card"><label>净盈亏</label><b id="st-total-pnl">0</b></div>
         <div class="stat-card"><label>标化净值</label><b id="st-eq">0.000</b></div>
-        <div class="stat-card"><label>区间出入金</label><b id="st-io">0</b></div>
-        <div class="stat-card"><label>区间胜率</label><b id="st-winrate">0%</b></div>
+        <div class="stat-card"><label>出入金</label><b id="st-io">0</b></div>
+        <div class="stat-card"><label>胜率</label><b id="st-winrate">0%</b></div>
         <div class="stat-card"><label>盈亏比</label><b id="st-ratio">0.00</b></div>
     </div>
 
@@ -108,7 +105,7 @@
 
     <div class="detail-section" id="detailPanel">
         <div class="detail-header">
-            <span style="font-size:13px; color:#333; font-weight:bold;">📋 复盘明细</span>
+            <span style="font-size:13px; font-weight:bold;">📋 区域内滚动明细</span>
             <div class="scroll-btns">
                 <button onclick="scrollTable('top')" class="btn-up-text"></button>
                 <button onclick="scrollTable('bottom')" class="btn-down-text"></button>
@@ -119,11 +116,7 @@
             <table id="dataTable">
                 <thead>
                     <tr>
-                        <th onclick="sortTable('originalIndex')">日期 ↕</th>
-                        <th onclick="sortTable('日盈亏')">日盈亏 ↕</th>
-                        <th onclick="sortTable('手续费')">手续费 ↕</th>
-                        <th>收盘权益</th><th>日净盈亏</th><th>农历+节气</th><th>流月</th><th>流日</th>
-                        <th>比例</th><th>保证金</th><th>仓位</th><th>标化净值</th><th>总净盈亏</th><th>出入金</th><th>备注</th>
+                        <th>日期</th><th>日盈亏</th><th>手续费</th><th>收盘权益</th><th>日净盈亏</th><th>农历节气</th><th>流月</th><th>流日</th><th>比例</th><th>保证金</th><th>仓位</th><th>标化净值</th><th>总净盈亏</th><th>出入金</th><th>备注</th>
                     </tr>
                 </thead>
                 <tbody id="h-body"></tbody>
@@ -137,7 +130,12 @@
     const myChart = echarts.init(document.getElementById('chart-main'));
     function n(v) { if (!v && v !== 0) return 0; let s = String(v).replace(/[,\s%]/g, ''); if (s.includes('(')) s = '-' + s.replace(/[()]/g, ''); return isNaN(parseFloat(s)) ? 0 : parseFloat(s); }
 
-    function toggleStats() { document.getElementById('statsGrid').classList.toggle('active'); }
+    // 切换折叠，默认展开
+    function toggleStats() { 
+        document.getElementById('statsGrid').classList.toggle('hidden');
+        setTimeout(() => myChart.resize(), 100); 
+    }
+    
     window.addEventListener('resize', () => { myChart.resize(); });
 
     document.getElementById('fileInput').addEventListener('change', function(e) {
@@ -146,7 +144,7 @@
             const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
             originalData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]).filter(r => r['日期']).map((item, index) => ({ ...item, originalIndex: index }));
             renderAll();
-            scrollTable('bottom');
+            setTimeout(() => scrollTable('bottom'), 200);
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
@@ -157,16 +155,14 @@
         const chronData = [...originalData].sort((a,b) => a.originalIndex - b.originalIndex);
         myChart.setOption({
             tooltip: { trigger: 'axis' },
-            legend: { data: ['标化净值', '日盈亏', '日手续费', '出入金'], selected: {'日手续费': false, '出入金': false}, top: 0 },
-            grid: { left: '3%', right: '3%', bottom: '15%', top: '45px', containLabel: true },
+            legend: { data: ['标化净值', '日盈亏'], top: 0 },
+            grid: { left: '3%', right: '3%', bottom: '15%', top: '40px', containLabel: true },
             xAxis: { type: 'category', data: chronData.map(r => r['日期']) },
             yAxis: [{ type: 'value', scale: true }, { type: 'value', splitLine: {show: false} }],
             dataZoom: [{ type: 'inside', start: 0, end: 100 }, { type: 'slider', start: 0, end: 100 }],
             series: [
                 { name: '标化净值', type: 'line', smooth: true, data: chronData.map(r => n(r['标准化净值']).toFixed(3)), lineStyle: { color: '#4169E1', width: 3 }, symbol: 'none' },
-                { name: '日盈亏', type: 'bar', yAxisIndex: 1, data: chronData.map(r => n(r['日净盈亏'])), itemStyle: { color: p => p.value >= 0 ? '#f5222d' : '#52c41a' } },
-                { name: '日手续费', type: 'bar', yAxisIndex: 1, data: chronData.map(r => n(r['手续费'])), itemStyle: { color: '#faad14', opacity: 0.6 } },
-                { name: '出入金', type: 'bar', yAxisIndex: 1, data: chronData.map(r => n(r['出入金'])), itemStyle: { color: '#722ed1', opacity: 0.5 } }
+                { name: '日盈亏', type: 'bar', yAxisIndex: 1, data: chronData.map(r => n(r['日净盈亏'])), itemStyle: { color: p => p.value >= 0 ? '#f5222d' : '#52c41a' } }
             ]
         }, true);
         myChart.on('datazoom', () => { const axis = myChart.getModel().getComponent('xAxis', 0).axis; updateStats(axis.scale.getExtent()[0], axis.scale.getExtent()[1]); });
