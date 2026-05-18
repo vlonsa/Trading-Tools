@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>陈氏复盘系统 V12.6 - 命理细分版</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root { --primary-blue: #1890ff; --up-red: #f5222d; --down-green: #52c41a; --fee-orange: #faad14; --io-purple: #722ed1; }
+        body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background-color: #f0f2f5; margin: 0; padding: 8px; overflow: hidden; }
+        .container { max-width: 1900px; margin: 0 auto; display: flex; flex-direction: column; height: calc(100vh - 16px); background: #fff; border-radius: 4px; padding: 10px; box-sizing: border-box; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; }
+        .header h2 { font-size: 20px; margin: 0; color: #262626; }
+        .toolbar { display: flex; gap: 12px; align-items: center; }
+
+        .btn-main { padding: 6px 14px; cursor: pointer; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; transition: all 0.2s; }
+        .btn-import { background: var(--primary-blue); color: white; box-shadow: 0 2px 4px rgba(24,144,255,0.3); }
+        .btn-reset { background: #52c41a; color: white; }
+        .btn-main:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 8px; margin-bottom: 10px; }
+        .stat-card { background: #fafafa; border: 1px solid #f0f0f0; padding: 10px 0; border-radius: 4px; text-align: center; }
+        .stat-card label { display: block; font-size: 12px; color: #595959; margin-bottom: 5px; font-weight: bold; }
+        .stat-card b { font-size: 22px; font-family: "Arial Black"; color: var(--primary-blue); letter-spacing: -0.5px; }
+
+        #chart-main { width: 100%; height: 350px; margin-bottom: 8px; }
+        
+        .detail-section { flex: 1; border: 1px solid #eee; overflow: hidden; display: flex; flex-direction: column; position: relative; }
+        .detail-header { display: flex; justify-content: space-between; align-items: center; background: #fafafa; padding: 6px 10px; border-bottom: 1px solid #eee; }
+        
+        .table-scroll { flex: 1; overflow: auto; scroll-behavior: smooth; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 1850px; }
+        th, td { padding: 8px 4px; font-size: 12px; border-bottom: 1px solid #f0f0f0; text-align: center; }
+        th { background: #fafafa; position: sticky; top: 0; z-index: 20; cursor: pointer; }
+
+        .up { color: var(--up-red); font-weight: bold; } 
+        .down { color: var(--down-green); font-weight: bold; }
+        .footer-row { background: #f0f5ff !important; position: sticky; bottom: 0; z-index: 19; font-weight: bold; }
+        .selected-row { background-color: #e6f7ff !important; outline: 1px solid var(--primary-blue); }
+
+        .fullscreen-mode #chart-main, .fullscreen-mode .stats-grid { display: none !important; }
+        .fullscreen-mode .detail-section { height: 100%; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+    </style>
+</head>
+<body>
+<div class="container" id="mainContainer">
+    <div class="header">
+        <h2>📊 陈氏复盘系统 V12.6 (命理细分)</h2>
+        <div class="toolbar">
+            <div style="font-size:13px; display:flex; align-items:center; gap:5px;">
+                <span>聚焦天数:</span>
+                <input type="number" id="zoomDays" style="width:45px; text-align:center;" value="60">
+            </div>
+            <button class="btn-main btn-reset" onclick="resetZoom()">🌐 全景视图</button>
+            <button class="btn-main btn-import" onclick="document.getElementById('fileInput').click()">📥 导入 Excel</button>
+            <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" style="display:none">
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card"><label>区间收盘权益</label><b id="st-balance">0</b></div>
+        <div class="stat-card"><label style="color:var(--up-red)">交易总盈利(+)</label><b id="st-plus" style="color:var(--up-red)">0</b></div>
+        <div class="stat-card"><label style="color:var(--down-green)">交易总亏损(-)</label><b id="st-minus" style="color:var(--down-green)">0</b></div>
+        <div class="stat-card"><label style="color:var(--fee-orange)">区间手续费</label><b id="st-fee-total" style="color:var(--fee-orange)">0</b></div>
+        <div class="stat-card"><label>最终净盈亏</label><b id="st-total-pnl">0</b></div>
+        <div class="stat-card"><label>标准化净值</label><b id="st-eq">0.000</b></div>
+        <div class="stat-card"><label>区间出入金</label><b id="st-io">0</b></div>
+        <div class="stat-card"><label>区间胜率</label><b id="st-winrate">0%</b></div>
+        <div class="stat-card"><label>区间盈亏比</label><b id="st-ratio">0.00</b></div>
+    </div>
+
+    <div id="chart-main"></div>
+
+    <div class="detail-section">
+        <div class="detail-header">
+            <span style="font-size:12px; color:#666;">💡 点击表格行联动图表 | 十字准星四角展示详细命理与风控数据</span>
+            <div style="display:flex; gap:8px;">
+                <button onclick="scrollTable('top')">🔼 顶部</button>
+                <button onclick="scrollTable('bottom')">🔽 底部</button>
+                <button id="toggleFullBtn" onclick="toggleFullScreen()" style="font-weight:bold; margin-left:10px;">🔳 全屏</button>
+            </div>
+        </div>
+        <div class="table-scroll" id="scrollContainer">
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable('originalIndex')">日期</th>
+                        <th onclick="sortTable('日盈亏')">日盈亏</th>
+                        <th onclick="sortTable('手续费')">手续费</th>
+                        <th onclick="sortTable('收盘权益')">收盘权益</th>
+                        <th onclick="sortTable('日净盈亏')">日净盈亏</th>
+                        <th style="width:110px">农历+节气</th>
+                        <th>流月</th><th>流日</th>
+                        <th onclick="sortTable('盈亏比例')">盈亏比例</th>
+                        <th onclick="sortTable('持仓浮盈')">持仓盈亏</th>
+                        <th onclick="sortTable('持仓保证金')">保证金</th>
+                        <th onclick="sortTable('持仓比例')">仓位</th>
+                        <th onclick="sortTable('账户净值')">账户净值</th>
+                        <th onclick="sortTable('标准化净值')">标化净值</th>
+                        <th onclick="sortTable('总净盈亏')">总净盈亏</th>
+                        <th onclick="sortTable('出入金')">出入金</th>
+                        <th onclick="sortTable('总出入金')">总出入金</th>
+                        <th style="width:200px">备注</th>
+                    </tr>
+                </thead>
+                <tbody id="h-body"></tbody>
+                <tfoot id="h-foot"></tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    let originalData = [];
+    let sortConfig = { key: null, asc: true };
+    const myChart = echarts.init(document.getElementById('chart-main'));
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const raw = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+            originalData = raw.filter(r => r['日期']).map((item, index) => ({ ...item, originalIndex: index }));
+            renderAll();
+            scrollTable('bottom');
+        };
+        reader.readAsArrayBuffer(e.target.files[0]);
+    });
+
+    function n(val) {
+        if (!val && val !== 0) return 0;
+        let s = String(val).replace(/[,\s%]/g, '');
+        if (s.includes('(')) s = '-' + s.replace(/[()]/g, '');
+        return isNaN(parseFloat(s)) ? 0 : parseFloat(s);
+    }
+
+    function renderAll() {
+        renderTable();
+        renderChart();
+        updateStats(0, originalData.length - 1);
+    }
+
+    function updateStats(start, end) {
+        if (!originalData.length) return;
+        const view = [...originalData].sort((a,b)=>a.originalIndex-b.originalIndex).slice(start, end + 1);
+        const last = view[view.length - 1];
+        const dayPnls = view.map(r => n(r['日盈亏']));
+        const wins = dayPnls.filter(v => v > 0);
+        const loss = dayPnls.filter(v => v < 0);
+        const totalPlus = wins.reduce((s,v) => s + v, 0);
+        const totalMinus = loss.reduce((s,v) => s + v, 0);
+        const totalFee = view.reduce((s,r) => s + n(r['手续费']), 0);
+
+        document.getElementById('st-balance').innerText = n(last['收盘权益']).toLocaleString();
+        document.getElementById('st-plus').innerText = totalPlus.toLocaleString();
+        document.getElementById('st-minus').innerText = totalMinus.toLocaleString();
+        document.getElementById('st-fee-total').innerText = totalFee.toLocaleString();
+        document.getElementById('st-total-pnl').innerText = ((totalPlus + totalMinus) - totalFee).toLocaleString();
+        document.getElementById('st-eq').innerText = n(last['标准化净值']).toFixed(3);
+        document.getElementById('st-io').innerText = view.reduce((s, r) => s + n(r['出入金']), 0).toLocaleString();
+        
+        const validPnls = view.map(r => n(r['日净盈亏'])).filter(v => v !== 0);
+        document.getElementById('st-winrate').innerText = validPnls.length ? (validPnls.filter(v=>v>0).length / validPnls.length * 100).toFixed(1) + '%' : '0%';
+        
+        const avgWin = wins.length ? totalPlus / wins.length : 0;
+        const avgLoss = loss.length ? Math.abs(totalMinus / loss.length) : 0;
+        document.getElementById('st-ratio').innerText = avgLoss ? (avgWin / avgLoss).toFixed(2) : '0.00';
+    }
+
+    function sortTable(key) {
+        if (sortConfig.key === key) sortConfig.asc = !sortConfig.asc;
+        else { sortConfig.key = key; sortConfig.asc = false; }
+        originalData.sort((a, b) => {
+            let valA = key === 'originalIndex' ? a[key] : n(a[key]);
+            let valB = key === 'originalIndex' ? b[key] : n(b[key]);
+            return sortConfig.asc ? valA - valB : valB - valA;
+        });
+        renderTable();
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('h-body');
+        tbody.innerHTML = originalData.map((r) => `
+            <tr id="row-${r.originalIndex}" onclick="syncToChart('${r['日期']}', ${r.originalIndex})">
+                <td>${r['日期']}</td>
+                <td class="${n(r['日盈亏'])>=0?'up':'down'}">${n(r['日盈亏']).toLocaleString()}</td>
+                <td style="color:var(--fee-orange)">${n(r['手续费']).toLocaleString()}</td>
+                <td>${n(r['收盘权益']).toLocaleString()}</td>
+                <td class="${n(r['日净盈亏'])>=0?'up':'down'}">${n(r['日净盈亏']).toLocaleString()}</td>
+                <td>${r['农历+节气']||'-'}</td><td>${r['流月']||'-'}</td><td>${r['流日']||'-'}</td>
+                <td class="${n(r['盈亏比例'])>=0?'up':'down'}">${(n(r['盈亏比例'])*100).toFixed(2)}%</td>
+                <td class="${n(r['持仓浮盈'])>=0?'up':'down'}">${n(r['持仓浮盈']).toLocaleString()}</td>
+                <td>${n(r['持仓保证金']).toLocaleString()}</td><td>${(n(r['持仓比例'])*100).toFixed(1)}%</td>
+                <td>${n(r['账户净值']).toFixed(3)}</td><td>${n(r['标准化净值']).toFixed(3)}</td>
+                <td class="${n(r['总净盈亏'])>=0?'up':'down'}">${n(r['总净盈亏']).toLocaleString()}</td>
+                <td style="color:${n(r['出入金'])>0?'#0050b3':'var(--io-purple)'}">${n(r['出入金']).toLocaleString()}</td>
+                <td>${n(r['总出入金']).toLocaleString()}</td>
+                <td style="text-align:left">${r['备注']||'-'}</td>
+            </tr>
+        `).join('');
+
+        const chronData = [...originalData].sort((a,b)=>a.originalIndex-b.originalIndex);
+        const lastRow = chronData[chronData.length-1] || {};
+        document.getElementById('h-foot').innerHTML = `
+            <tr class="footer-row">
+                <td>汇总</td>
+                <td class="${chronData.reduce((s,r)=>s+n(r['日盈亏']),0)>=0?'up':'down'}">${chronData.reduce((s,r)=>s+n(r['日盈亏']),0).toLocaleString()}</td>
+                <td style="color:var(--fee-orange)">${chronData.reduce((s,r)=>s+n(r['手续费']),0).toLocaleString()}</td>
+                <td>${n(lastRow['收盘权益']).toLocaleString()}</td>
+                <td class="${chronData.reduce((s,r)=>s+n(r['日净盈亏']),0)>=0?'up':'down'}">${chronData.reduce((s,r)=>s+n(r['日净盈亏']),0).toLocaleString()}</td>
+                <td colspan="10"></td><td>${n(lastRow['总出入金']).toLocaleString()}</td><td></td>
+            </tr>`;
+    }
+
+    function renderChart() {
+        const chronData = [...originalData].sort((a,b) => a.originalIndex - b.originalIndex);
+        myChart.setOption({
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'cross', label: { backgroundColor: '#6a7985' } },
+                backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                borderWidth: 1, borderColor: '#eee', padding: [10, 15],
+                formatter: params => {
+                    const r = chronData[params[0].dataIndex];
+                    return `
+                        <div style="min-width:240px; font-family:sans-serif;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:8px; border-bottom:2px solid #f0f0f0; padding-bottom:5px;">
+                                <span style="color:#1890ff;font-weight:bold;font-size:14px;">📈 净值: ${n(r['标准化净值']).toFixed(3)}</span>
+                                <span style="color:${n(r['日净盈亏'])>=0?'#f5222d':'#52c41a'};font-weight:bold;font-size:14px;">💰 盈亏: ${n(r['日净盈亏']).toLocaleString()}</span>
+                            </div>
+                            <div style="font-size:12px; line-height:1.8; color:#333;">
+                                <div style="display:flex; justify-content:space-between;">
+                                    <span>📅 <b>日期:</b> ${r['日期']}</span>
+                                    <span style="color:#888;">${r['农历+节气'] || ''}</span>
+                                </div>
+                                <div style="margin-top:4px; padding:4px; background:#f9f9f9; border-radius:4px;">
+                                    🌙 <b>流月卦象:</b> <span style="color:#722ed1; font-weight:bold;">${r['流月'] || '-'}</span><br/>
+                                    ☀️ <b>流日卦象:</b> <span style="color:#eb2f96; font-weight:bold;">${r['流日'] || '-'}</span>
+                                </div>
+                                <div style="margin-top:4px;">
+                                    📦 <b>持仓比例:</b> <span style="color:${n(r['持仓比例'])>0.7?'#f5222d':'#333'}; font-weight:bold;">${(n(r['持仓比例'])*100).toFixed(1)}%</span><br/>
+                                    📝 <b>备注:</b> <span style="color:#666">${r['备注'] || '-'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            },
+            legend: { data: ['标准化净值', '日盈亏'], top: 0 },
+            grid: { left: '3%', right: '3%', bottom: '12%', top: '40px', containLabel: true },
+            xAxis: { 
+                type: 'category', 
+                data: chronData.map(r => r['日期']),
+                axisPointer: { label: { show: true } }
+            },
+            yAxis: [
+                { type: 'value', scale: true, axisPointer: { label: { show: true } } },
+                { type: 'value', splitLine: {show: false} }
+            ],
+            dataZoom: [{ type: 'inside', start: 0, end: 100 }, { type: 'slider', start: 0, end: 100 }],
+            series: [
+                { 
+                    name: '标准化净值', type: 'line', smooth: true, 
+                    data: chronData.map(r => n(r['标准化净值']).toFixed(3)), 
+                    lineStyle: { width: 3, color: '#1890ff' }, symbol: 'none' 
+                },
+                { 
+                    name: '日盈亏', type: 'bar', yAxisIndex: 1, 
+                    data: chronData.map(r => n(r['日净盈亏'])), 
+                    itemStyle: { color: p => p.value >= 0 ? '#f5222d' : '#52c41a' } 
+                }
+            ]
+        }, true);
+
+        myChart.on('datazoom', () => {
+            const axis = myChart.getModel().getComponent('xAxis', 0).axis;
+            updateStats(axis.scale.getExtent()[0], axis.scale.getExtent()[1]);
+        });
+    }
+
+    function syncToChart(date, originalIdx) {
+        document.querySelectorAll('tr').forEach(r => r.classList.remove('selected-row'));
+        const targetRow = document.getElementById(`row-${originalIdx}`);
+        if(targetRow) targetRow.classList.add('selected-row');
+
+        const chronData = [...originalData].sort((a,b) => a.originalIndex - b.originalIndex);
+        const dataIdx = chronData.findIndex(r => r.originalIndex === originalIdx);
+        
+        if(dataIdx !== -1) {
+            const zoomDays = parseInt(document.getElementById('zoomDays').value) || 60;
+            let startIdx = Math.max(0, dataIdx - Math.floor(zoomDays / 2));
+            let endIdx = Math.min(chronData.length - 1, startIdx + zoomDays);
+            
+            myChart.dispatchAction({
+                type: 'dataZoom',
+                start: (startIdx / chronData.length) * 100,
+                end: ((endIdx + 1) / chronData.length) * 100
+            });
+
+            setTimeout(() => {
+                myChart.dispatchAction({ type: 'showTip', seriesIndex: 0, dataIndex: dataIdx });
+            }, 60);
+        }
+    }
+
+    function scrollTable(pos) {
+        const container = document.getElementById('scrollContainer');
+        if (pos === 'top') container.scrollTop = 0;
+        else container.scrollTop = container.scrollHeight;
+    }
+
+    function resetZoom() {
+        myChart.dispatchAction({ type: 'dataZoom', start: 0, end: 100 });
+    }
+
+    function toggleFullScreen() {
+        document.getElementById('mainContainer').classList.toggle('fullscreen-mode');
+        setTimeout(() => myChart.resize(), 150);
+    }
+
+    window.onresize = () => myChart.resize();
+</script>
+</body>
+</html>
