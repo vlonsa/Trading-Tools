@@ -9,64 +9,55 @@
     <style>
         :root { --primary-blue: #1890ff; --up-red: #f5222d; --down-green: #52c41a; --fee-orange: #faad14; --io-purple: #722ed1; }
         body { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; background-color: #f0f2f5; margin: 0; padding: 5px; overflow: hidden; height: 100vh; }
-        
-        /* 强制全端固定高度，取消全局滚动 */
         .container { max-width: 1900px; margin: 0 auto; display: flex; flex-direction: column; height: calc(100vh - 10px); background: #fff; border-radius: 4px; padding: 10px; box-sizing: border-box; overflow: hidden; }
         
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; flex-wrap: nowrap; gap: 5px; }
-        .header h2 { font-size: 20px; margin: 0; color: #262626; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; flex-wrap: nowrap; gap: 4px; }
+        .header h2 { font-size: 18px; margin: 0; color: #262626; display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
         
-        /* 折叠按钮：现在嵌入标题栏 */
-        .mobile-fold-btn { display: none; padding: 2px 8px; background: #f0f5ff; border: 1px solid #adc6ff; color: #1d39c4; border-radius: 4px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+        /* 1. 看板开关图标化 */
+        .mobile-fold-btn { padding: 2px 6px; background: #e6f7ff; border: 1px solid #91d5ff; color: var(--primary-blue); border-radius: 4px; font-size: 14px; cursor: pointer; }
 
-        .toolbar { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-        .btn-main { padding: 6px 12px; cursor: pointer; border: none; border-radius: 4px; font-size: 14px; font-weight: bold; }
+        .toolbar { display: flex; gap: 6px; align-items: center; flex-shrink: 1; }
+        /* 2. 聚焦框缩小 */
+        #zoomDays { width: 35px; height: 24px; text-align: center; border: 1px solid #d9d9d9; border-radius: 2px; font-size: 12px; }
+        
+        .btn-main { padding: 5px 10px; cursor: pointer; border: none; border-radius: 4px; font-size: 13px; font-weight: bold; white-space: nowrap; }
         .btn-import { background: var(--primary-blue); color: white; }
         .btn-reset { background: #52c41a; color: white; }
 
-        /* 看板默认显示 */
-        .stats-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 6px; margin-bottom: 8px; transition: all 0.3s; }
-        .stat-card { background: #fafafa; border: 1px solid #f0f0f0; padding: 8px 2px; border-radius: 4px; text-align: center; }
-        .stat-card label { display: block; font-size: 12px; color: #595959; margin-bottom: 4px; font-weight: bold; }
-        .stat-card b { font-size: 18px; font-family: "Arial Black"; color: var(--primary-blue); }
+        .stats-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 5px; margin-bottom: 8px; }
+        .stats-grid.hidden { display: none; }
+        .stat-card { background: #fafafa; border: 1px solid #f0f0f0; padding: 6px 2px; border-radius: 4px; text-align: center; }
+        .stat-card label { display: block; font-size: 11px; color: #595959; margin-bottom: 2px; font-weight: bold; }
+        .stat-card b { font-size: 16px; font-family: "Arial Black"; color: var(--primary-blue); }
 
         #chart-main { width: 100%; height: 380px; margin-bottom: 8px; flex-shrink: 0; }
         
-        /* 局部滚动区域 */
-        .detail-section { flex: 1; border: 1px solid #eee; overflow: hidden; display: flex; flex-direction: column; min-height: 150px; }
-        .detail-header { display: flex; justify-content: space-between; align-items: center; background: #fafafa; padding: 6px 12px; border-bottom: 1px solid #eee; }
-        .scroll-btns { display: flex; gap: 6px; }
-        .scroll-btns button { padding: 5px 12px; font-size: 13px; cursor: pointer; background: #fff; border: 1px solid #d9d9d9; border-radius: 4px; font-weight: bold; }
+        .detail-section { flex: 1; border: 1px solid #eee; overflow: hidden; display: flex; flex-direction: column; min-height: 100px; }
+        .detail-header { display: flex; justify-content: space-between; align-items: center; background: #fafafa; padding: 5px 10px; border-bottom: 1px solid #eee; }
+        
+        /* 3. 回归彩色按钮样式 */
+        .scroll-btns { display: flex; gap: 5px; }
+        .scroll-btns button { padding: 4px 10px; font-size: 12px; cursor: pointer; border-radius: 4px; border: none; font-weight: bold; color: white; }
+        .btn-up { background: var(--primary-blue); }
+        .btn-down { background: var(--down-green); }
+        .btn-full { background: #8c8c8c; }
 
         .table-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; }
         
-        @media (min-width: 769px) {
-            .btn-up-text::after { content: " 顶部 🔼"; }
-            .btn-down-text::after { content: " 底部 🔽"; }
-            .btn-full-text::after { content: " 全屏"; }
-        }
-
         @media (max-width: 768px) {
-            .header h2 { font-size: 15px; }
-            .mobile-fold-btn { display: inline-block; } /* 手机端标题栏内显示 */
             .stats-grid { grid-template-columns: repeat(3, 1fr); }
-            .stats-grid.hidden { display: none; } /* 折叠逻辑 */
-            
-            #chart-main { height: 280px; }
-            .table-scroll::after { content: ""; display: block; height: 120px; width: 100%; } /* 手机端留白 */
-
-            /* 横屏下的极致空间压缩 */
+            #chart-main { height: 260px; }
+            .table-scroll::after { content: ""; display: block; height: 120px; width: 100%; }
             @media (orientation: landscape) {
-                #chart-main { height: 180px; }
-                .stats-grid { grid-template-columns: repeat(5, 1fr); }
-                .stat-card { padding: 4px 2px; }
-                .stat-card b { font-size: 15px; }
-                .header { margin-bottom: 5px; }
+                #chart-main { height: 160px; }
+                .header h2 { font-size: 14px; }
+                .stat-card b { font-size: 14px; }
             }
         }
 
         table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 1800px; }
-        th, td { padding: 8px 4px; font-size: 13px; border-bottom: 1px solid #f0f0f0; text-align: center; }
+        th, td { padding: 8px 4px; font-size: 12px; border-bottom: 1px solid #f0f0f0; text-align: center; }
         th { background: #fafafa; position: sticky; top: 0; z-index: 20; color: #555; }
         .up { color: var(--up-red); font-weight: bold; } 
         .down { color: var(--down-green); font-weight: bold; }
@@ -79,10 +70,11 @@
     <div class="header">
         <h2>
             📊 复盘 V12.18
-            <div class="mobile-fold-btn" onclick="toggleStats()">看板展开/折叠</div>
+            <div class="mobile-fold-btn" onclick="toggleStats()" title="展开/折叠看板">📊</div>
         </h2>
         <div class="toolbar">
-            <input type="number" id="zoomDays" style="width:45px; height:26px; text-align:center;" value="60">
+            <span style="font-size:12px">聚焦:</span>
+            <input type="number" id="zoomDays" value="60">
             <button class="btn-main btn-reset" onclick="resetZoom()">🧩 全景</button>
             <button class="btn-main btn-import" onclick="document.getElementById('fileInput').click()">📥 导入</button>
             <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" style="display:none">
@@ -105,11 +97,11 @@
 
     <div class="detail-section" id="detailPanel">
         <div class="detail-header">
-            <span style="font-size:13px; font-weight:bold;">📋 区域内滚动明细</span>
+            <span style="font-size:13px; font-weight:bold; color:var(--primary-blue)">📅 每日明细</span>
             <div class="scroll-btns">
-                <button onclick="scrollTable('top')" class="btn-up-text"></button>
-                <button onclick="scrollTable('bottom')" class="btn-down-text"></button>
-                <button onclick="toggleFullScreen()" class="btn-full-text"></button>
+                <button onclick="scrollTable('top')" class="btn-up">回顶部 🔼</button>
+                <button onclick="scrollTable('bottom')" class="btn-down">跳底部 🔽</button>
+                <button onclick="toggleFullScreen()" class="btn-full">全屏</button>
             </div>
         </div>
         <div class="table-scroll" id="scrollContainer">
@@ -130,9 +122,9 @@
     const myChart = echarts.init(document.getElementById('chart-main'));
     function n(v) { if (!v && v !== 0) return 0; let s = String(v).replace(/[,\s%]/g, ''); if (s.includes('(')) s = '-' + s.replace(/[()]/g, ''); return isNaN(parseFloat(s)) ? 0 : parseFloat(s); }
 
-    // 切换折叠，默认展开
     function toggleStats() { 
-        document.getElementById('statsGrid').classList.toggle('hidden');
+        const grid = document.getElementById('statsGrid');
+        grid.classList.toggle('hidden');
         setTimeout(() => myChart.resize(), 100); 
     }
     
@@ -155,14 +147,20 @@
         const chronData = [...originalData].sort((a,b) => a.originalIndex - b.originalIndex);
         myChart.setOption({
             tooltip: { trigger: 'axis' },
-            legend: { data: ['标化净值', '日盈亏'], top: 0 },
-            grid: { left: '3%', right: '3%', bottom: '15%', top: '40px', containLabel: true },
+            legend: { 
+                data: ['标化净值', '日盈亏', '手续费', '出入金'], 
+                selected: {'手续费': false, '出入金': false}, // 默认不显示，点击可开
+                top: 0 
+            },
+            grid: { left: '3%', right: '3%', bottom: '15%', top: '35px', containLabel: true },
             xAxis: { type: 'category', data: chronData.map(r => r['日期']) },
             yAxis: [{ type: 'value', scale: true }, { type: 'value', splitLine: {show: false} }],
             dataZoom: [{ type: 'inside', start: 0, end: 100 }, { type: 'slider', start: 0, end: 100 }],
             series: [
                 { name: '标化净值', type: 'line', smooth: true, data: chronData.map(r => n(r['标准化净值']).toFixed(3)), lineStyle: { color: '#4169E1', width: 3 }, symbol: 'none' },
-                { name: '日盈亏', type: 'bar', yAxisIndex: 1, data: chronData.map(r => n(r['日净盈亏'])), itemStyle: { color: p => p.value >= 0 ? '#f5222d' : '#52c41a' } }
+                { name: '日盈亏', type: 'bar', yAxisIndex: 1, data: chronData.map(r => n(r['日净盈亏'])), itemStyle: { color: p => p.value >= 0 ? '#f5222d' : '#52c41a' } },
+                { name: '手续费', type: 'bar', yAxisIndex: 1, data: chronData.map(r => n(r['手续费'])), itemStyle: { color: '#faad14' } },
+                { name: '出入金', type: 'bar', yAxisIndex: 1, data: chronData.map(r => n(r['出入金'])), itemStyle: { color: '#722ed1' } }
             ]
         }, true);
         myChart.on('datazoom', () => { const axis = myChart.getModel().getComponent('xAxis', 0).axis; updateStats(axis.scale.getExtent()[0], axis.scale.getExtent()[1]); });
@@ -205,6 +203,7 @@
             const zoomDays = parseInt(document.getElementById('zoomDays').value) || 60;
             let start = Math.max(0, dataIdx - Math.floor(zoomDays/2));
             myChart.dispatchAction({ type: 'dataZoom', start: (start/chronData.length)*100, end: ((start+zoomDays)/chronData.length)*100 });
+            myChart.dispatchAction({ type: 'showTip', seriesIndex: 0, dataIndex: dataIdx });
         }
     }
 
